@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Design & Implementation Dictionary</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-overlay {
+            position: relative;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .header {
+            padding: 2rem;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(45deg, #00d4ff, #7b2ff7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #aaa;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            position: fixed;
+            top: 120px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 300px;
+            pointer-events: auto;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #00d4ff;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .category-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .category-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .category-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .category-btn.active {
+            background: linear-gradient(45deg, #00d4ff, #7b2ff7);
+            border-color: transparent;
+        }
+
+        .term-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+
+        .term-item {
+            padding: 0.8rem;
+            margin-bottom: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid #00d4ff;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .term-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .term-item h3 {
+            font-size: 1rem;
+            margin-bottom: 0.3rem;
+            color: #00d4ff;
+        }
+
+        .term-item p {
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        .detail-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            max-width: 600px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(15px);
+            padding: 2rem;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: auto;
+            display: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .detail-panel.active {
+            display: block;
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .detail-panel h2 {
+            color: #00d4ff;
+            margin-bottom: 0.5rem;
+            font-size: 1.8rem;
+        }
+
+        .detail-panel .category-tag {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            background: rgba(123, 47, 247, 0.3);
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .detail-panel .description {
+            line-height: 1.6;
+            color: #ddd;
+            margin-bottom: 1rem;
+        }
+
+        .detail-panel .examples {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .detail-panel .examples h3 {
+            color: #7b2ff7;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .detail-panel .examples code {
+            display: block;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.8rem;
+            border-radius: 5px;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            margin-top: 0.5rem;
+            overflow-x: auto;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 30px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 0, 0, 0.5);
+            transform: rotate(90deg);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.5);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 212, 255, 0.7);
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                top: auto;
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+                max-width: none;
+            }
+
+            .detail-panel {
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+            }
+
+            .header h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div class="ui-overlay">
+        <div class="header">
+            <h1>System Design & Implementation Dictionary</h1>
+            <p>Interactive knowledge base for modern tech architecture</p>
+        </div>
+
+        <div class="controls">
+            <input type="text" class="search-box" id="searchInput" placeholder="Search terms...">
+            
+            <div class="category-filter">
+                <button class="category-btn active" data-category="all">All</button>
+                <button class="category-btn" data-category="system-design">System Design</button>
+                <button class="category-btn" data-category="api">API Strategy</button>
+                <button class="category-btn" data-category="ai">AI</button>
+                <button class="category-btn" data-category="automation">Automation</button>
+                <button class="category-btn" data-category="database">Database</button>
+            </div>
+
+            <div class="term-list" id="termList"></div>
+        </div>
+
+        <div class="detail-panel" id="detailPanel">
+            <button class="close-btn" id="closeBtn">&times;</button>
+            <div id="detailContent"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Dictionary Data Structure
+        const dictionaryData = [
+            {
+                term: "Load Balancing",
+                category: "system-design",
+                shortDesc: "Distributing traffic across servers",
+                description: "Load balancing is the process of distributing network traffic across multiple servers to ensure no single server bears too much demand. This improves application availability, scalability, and reliability.",
+                examples: "Round Robin, Least Connections, IP Hash algorithms. Tools: NGINX, HAProxy, AWS ELB"
+            },
+            {
+                term: "Microservices",
+                category: "system-design",
+                shortDesc: "Distributed architecture pattern",
+                description: "Microservices architecture structures an application as a collection of loosely coupled, independently deployable services. Each service is self-contained and implements a specific business capability.",
+                examples: "API Gateway → Auth Service → User Service → Payment Service. Each service has its own database and can scale independently."
+            },
+            {
+                term: "CAP Theorem",
+                category: "system-design",
+                shortDesc: "Consistency, Availability, Partition tolerance",
+                description: "CAP Theorem states that a distributed system can only guarantee two of three properties: Consistency (all nodes see same data), Availability (every request gets a response), and Partition Tolerance (system works despite network failures).",
+                examples: "MongoDB (CP), Cassandra (AP), PostgreSQL (CA in single-node)"
+            },
+            {
+                term: "REST API",
+                category: "api",
+                shortDesc: "Representational State Transfer",
+                description: "REST is an architectural style for designing networked applications using stateless communication and standard HTTP methods (GET, POST, PUT, DELETE). Resources are identified by URLs and manipulated using HTTP verbs.",
+                examples: "GET /api/users → List users\nPOST /api/users → Create user\nPUT /api/users/123 → Update user\nDELETE /api/users/123 → Delete user"
+            },
+            {
+                term: "GraphQL",
+                category: "api",
+                shortDesc: "Query language for APIs",
+                description: "GraphQL is a query language and runtime for APIs that allows clients to request exactly the data they need. Unlike REST, a single GraphQL endpoint can serve multiple data requirements with flexible queries.",
+                examples: "query { user(id: 123) { name email posts { title } } }\nReturns only requested fields in a single request."
+            },
+            {
+                term: "API Gateway",
+                category: "api",
+                shortDesc: "Single entry point for APIs",
+                description: "An API Gateway is a server that acts as an entry point for microservices. It handles request routing, composition, authentication, rate limiting, and protocol translation.",
+                examples: "Kong, AWS API Gateway, Azure API Management. Routes /users → User Service, /orders → Order Service"
+            },
+            {
+                term: "Rate Limiting",
+                category: "api",
+                shortDesc: "Controlling request frequency",
+                description: "Rate limiting restricts the number of API requests a client can make within a time window. This prevents abuse, ensures fair usage, and protects backend services from overload.",
+                examples: "100 requests per minute per API key. Returns 429 (Too Many Requests) when exceeded. Implements token bucket or sliding window algorithms."
+            },
+            {
+                term: "Prompt Engineering",
+                category: "ai",
+                shortDesc: "Optimizing AI model inputs",
+                description: "Prompt engineering is the practice of designing and refining inputs to large language models to achieve desired outputs. It involves structured instructions, examples, context, and constraints.",
+                examples: "System: You are a helpful assistant.\nUser: Explain {topic} in simple terms.\nAssistant: [response]\nUse few-shot learning with examples."
+            },
+            {
+                term: "RAG (Retrieval-Augmented Generation)",
+                category: "ai",
+                shortDesc: "Enhancing AI with external knowledge",
+                description: "RAG combines information retrieval with generative AI. It retrieves relevant documents from a knowledge base and uses them as context for the language model to generate accurate, grounded responses.",
+                examples: "User query → Vector search in document DB → Top 5 relevant chunks → LLM with context → Accurate answer with sources"
+            },
+            {
+                term: "Vector Database",
+                category: "ai",
+                shortDesc: "Storage for embeddings",
+                description: "Vector databases store and efficiently search high-dimensional vector embeddings. They enable semantic search, similarity matching, and are essential for AI applications like RAG and recommendation systems.",
+                examples: "Pinecone, Weaviate, ChromaDB. Store text embeddings (1536 dimensions from OpenAI) and search by cosine similarity."
+            },
+            {
+                term: "Fine-tuning",
+                category: "ai",
+                shortDesc: "Customizing pre-trained models",
+                description: "Fine-tuning adapts a pre-trained AI model to specific tasks or domains by training on custom datasets. This improves performance for specialized use cases while requiring less data than training from scratch.",
+                examples: "Take GPT-3.5 → Train on customer support conversations → Custom support bot. Or fine-tune BERT for medical text classification."
+            },
+            {
+                term: "n8n Workflows",
+                category: "automation",
+                shortDesc: "Visual automation platform",
+                description: "n8n is a workflow automation tool that connects apps and services through visual programming. It supports triggers, actions, conditional logic, and custom code execution for complex automation scenarios.",
+                examples: "Trigger: Webhook → HTTP Request to API → Filter data → Transform with JavaScript → Send to Slack/Database"
+            },
+            {
+                term: "Make (Integromat)",
+                category: "automation",
+                shortDesc: "Advanced automation scenarios",
+                description: "Make is a visual platform for building complex automated workflows (scenarios) connecting apps, APIs, and services. It offers advanced routing, error handling, and data transformation capabilities.",
+                examples: "Watch Google Sheets → For each row → API call → Router (if condition) → Path A: Send email, Path B: Create Airtable record"
+            },
+            {
+                term: "Webhooks",
+                category: "automation",
+                shortDesc: "Event-driven HTTP callbacks",
+                description: "Webhooks are user-defined HTTP callbacks triggered by specific events. They enable real-time data synchronization between systems without polling, sending POST requests when events occur.",
+                examples: "Stripe payment success → POST to your-app.com/webhook → Process order → Send confirmation. Include signature verification for security."
+            },
+            {
+                term: "ETL Pipeline",
+                category: "automation",
+                shortDesc: "Extract, Transform, Load",
+                description: "ETL is the process of extracting data from sources, transforming it into a usable format, and loading it into a destination system. Critical for data warehousing and analytics.",
+                examples: "Extract: API/CSV → Transform: Clean, aggregate, enrich with Python/JS → Load: PostgreSQL/BigQuery. Schedule with cron or Airflow."
+            },
+            {
+                term: "SQL Indexing",
+                category: "database",
+                shortDesc: "Optimizing query performance",
+                description: "Database indexes are data structures that improve query speed by creating efficient lookup paths. Indexes trade write performance and storage for dramatically faster read operations on indexed columns.",
+                examples: "CREATE INDEX idx_email ON users(email);\nSpeeds up: SELECT * FROM users WHERE email = 'user@example.com'\nB-tree (default), Hash, GiST indexes"
+            },
+            {
+                term: "Database Normalization",
+                category: "database",
+                shortDesc: "Reducing data redundancy",
+                description: "Normalization organizes database tables to minimize redundancy and dependency. Forms include 1NF (atomic values), 2NF (no partial dependencies), 3NF (no transitive dependencies).",
+                examples: "Bad: users(id, name, order1, order2)\nGood: users(id, name), orders(id, user_id, product)\nRelationships via foreign keys"
+            },
+            {
+                term: "ACID Properties",
+                category: "database",
+                shortDesc: "Transaction reliability guarantees",
+                description: "ACID ensures database transaction reliability: Atomicity (all-or-nothing), Consistency (valid state), Isolation (concurrent safety), Durability (permanent changes). Critical for financial and critical systems.",
+                examples: "Bank transfer: BEGIN; UPDATE account1 SET balance = balance - 100; UPDATE account2 SET balance = balance + 100; COMMIT; Both succeed or both fail."
+            },
+            {
+                term: "NoSQL Databases",
+                category: "database",
+                shortDesc: "Non-relational data stores",
+                description: "NoSQL databases provide flexible schemas and horizontal scalability. Types include Document (MongoDB), Key-Value (Redis), Column-Family (Cassandra), and Graph (Neo4j) databases.",
+                examples: "MongoDB: {user_id: 123, name: 'John', orders: [{...}, {...}]}\nRedis: SET session:xyz {data}\nCassandra: Wide-column for time-series"
+            },
+            {
+                term: "Database Sharding",
+                category: "database",
+                shortDesc: "Horizontal data partitioning",
+                description: "Sharding splits a database into smaller, faster, more manageable pieces called shards. Each shard contains a subset of data, distributed across multiple servers for improved performance and scalability.",
+                examples: "Shard by user_id: Users 0-1M → Shard1, 1M-2M → Shard2. Or geographic: US users → US-shard, EU users → EU-shard"
+            },
+            {
+                term: "Caching Strategies",
+                category: "system-design",
+                shortDesc: "Improving data access speed",
+                description: "Caching stores frequently accessed data in fast storage layers. Strategies include Cache-Aside (lazy loading), Write-Through (sync writes), Write-Behind (async writes), and Read-Through (cache handles misses).",
+                examples: "Redis/Memcached for session data, API responses. CDN for static assets. Application-level caching for expensive computations. TTL: 5 minutes."
+            },
+            {
+                term: "Message Queue",
+                category: "system-design",
+                shortDesc: "Asynchronous communication",
+                description: "Message queues enable asynchronous communication between services by storing messages until they're processed. They decouple producers and consumers, improve reliability, and enable load leveling.",
+                examples: "RabbitMQ, Apache Kafka, AWS SQS. Producer → Queue → Consumer. Use for email sending, image processing, event streaming."
+            },
+            {
+                term: "Event-Driven Architecture",
+                category: "system-design",
+                shortDesc: "Reactive system design",
+                description: "Event-driven architecture uses events to trigger and communicate between decoupled services. Services publish events when state changes occur, and subscribers react asynchronously.",
+                examples: "Order Created event → [Inventory Service, Email Service, Analytics Service] all react independently. Use Kafka, EventBridge, or RabbitMQ."
+            },
+            {
+                term: "API Versioning",
+                category: "api",
+                shortDesc: "Managing API evolution",
+                description: "API versioning allows backward-incompatible changes while maintaining existing clients. Common strategies include URI versioning, header versioning, and parameter versioning.",
+                examples: "URI: /v1/users vs /v2/users\nHeader: Accept: application/vnd.api+json;version=2\nQuery: /users?version=2"
+            },
+            {
+                term: "OAuth 2.0",
+                category: "api",
+                shortDesc: "Authorization framework",
+                description: "OAuth 2.0 is an authorization framework that enables third-party applications to obtain limited access to user accounts. It uses access tokens instead of passwords and supports various grant types.",
+                examples: "Login with Google: User → Auth Server → Authorization Code → Your App → Access Token → API calls with Bearer token"
+            },
+            {
+                term: "Embeddings",
+                category: "ai",
+                shortDesc: "Semantic vector representations",
+                description: "Embeddings convert text, images, or other data into dense vector representations that capture semantic meaning. Similar concepts have vectors close together in high-dimensional space.",
+                examples: "text-embedding-ada-002 converts 'dog' to [0.23, -0.15, 0.87, ...] (1536 dims). 'puppy' has similar vector. Use for search, clustering."
+            },
+            {
+                term: "LangChain",
+                category: "ai",
+                shortDesc: "LLM application framework",
+                description: "LangChain is a framework for developing applications powered by language models. It provides tools for prompt management, memory, chains, agents, and integrations with various LLMs and data sources.",
+                examples: "Chain: Load docs → Split → Embed → Store in Pinecone → QA chain with GPT-4. Agent: Can use tools like calculator, search, SQL."
+            },
+            {
+                term: "Async/Await",
+                category: "automation",
+                shortDesc: "Asynchronous programming pattern",
+                description: "Async/await is a programming pattern for handling asynchronous operations in a synchronous-looking manner. It improves code readability and error handling for I/O operations and API calls.",
+                examples: "const data = await fetch(url);\nconst json = await data.json();\nMakes non-blocking I/O look sequential. Better than callback hell."
+            },
+            {
+                term: "Idempotency",
+                category: "api",
+                shortDesc: "Safe operation retry",
+                description: "Idempotent operations produce the same result when called multiple times with the same parameters. Critical for reliable distributed systems where requests may be retried due to network issues.",
+                examples: "PUT /users/123 {name: 'John'} is idempotent. POST /orders creates new order each time (not idempotent). Use idempotency keys."
+            },
+            {
+                term: "CORS",
+                category: "api",
+                shortDesc: "Cross-Origin Resource Sharing",
+                description: "CORS is a security feature that controls how web pages can request resources from different domains. Servers must explicitly allow cross-origin requests through HTTP headers.",
+                examples: "Access-Control-Allow-Origin: https://example.com\nAccess-Control-Allow-Methods: GET, POST\nHandles preflight OPTIONS requests"
+            },
+            {
+                term: "Batch Processing",
+                category: "automation",
+                shortDesc: "Processing data in groups",
+                description: "Batch processing handles large volumes of data in groups rather than individually. It optimizes throughput, reduces API calls, and efficiently processes scheduled workloads.",
+                examples: "Process 10,000 records in batches of 100. Nightly ETL jobs. Bulk insert 1000 rows with single SQL query instead of 1000 inserts."
+            }
+        ];
+
+        // Three.js Scene Setup
+        let scene, camera, renderer, particles, particleGeometry, particleMaterial;
+        let mouseX = 0, mouseY = 0;
+        let windowHalfX = window.innerWidth / 2;
+        let windowHalfY = window.innerHeight / 2;
+
+        function initThree() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0f0c29, 0.0008);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
+            camera.position.z = 1000;
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Create particle system
+            const particleCount = 2000;
+            particleGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = Math.random() * 2000 - 1000;
+                positions[i + 1] = Math.random() * 2000 - 1000;
+                positions[i + 2] = Math.random() * 2000 - 1000;
+
+                // Color gradient
+                const color = new THREE.Color();
+                color.setHSL(Math.random() * 0.3 + 0.5, 0.8, 0.6);
+                colors[i] = color.r;
+                colors[i + 1] = color.g;
+                colors[i + 2] = color.b;
+            }
+
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            particleMaterial = new THREE.PointsMaterial({
+                size: 3,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+
+            particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+
+            // Add ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambientLight);
+
+            // Event listeners
+            document.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onMouseMove(event) {
+            mouseX = (event.clientX - windowHalfX) * 0.5;
+            mouseY = (event.clientY - windowHalfY) * 0.5;
+        }
+
+        function onWindowResize() {
+            windowHalfX = window.innerWidth / 2;
+            windowHalfY = window.innerHeight / 2;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Rotate particles
+            particles.rotation.x += 0.0005;
+            particles.rotation.y += 0.0008;
+
+            // Mouse interaction
+            camera.position.x += (mouseX - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY - camera.position.y) * 0.05;
+            camera.lookAt(scene.position);
+
+            renderer.render(scene, camera);
+        }
+
+        // Dictionary App Logic
+        let currentCategory = 'all';
+        let searchTerm = '';
+
+        function renderTermList() {
+            const termList = document.getElementById('termList');
+            const filteredData = dictionaryData.filter(item => {
+                const matchesCategory = currentCategory === 'all' || item.category === currentCategory;
+                const matchesSearch = item.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    item.shortDesc.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    item.description.toLowerCase().includes(searchTerm.toLowerCase());
+                return matchesCategory && matchesSearch;
+            });
+
+            termList.innerHTML = filteredData.map(item => `
+                <div class="term-item" data-term="${item.term}">
+                    <h3>${item.term}</h3>
+                    <p>${item.shortDesc}</p>
+                </div>
+            `).join('');
+
+            // Add click listeners
+            document.querySelectorAll('.term-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    showDetail(this.dataset.term);
+                });
+            });
+        }
+
+        function showDetail(termName) {
+            const term = dictionaryData.find(item => item.term === termName);
+            if (!term) return;
+
+            const detailContent = document.getElementById('detailContent');
+            detailContent.innerHTML = `
+                <h2>${term.term}</h2>
+                <span class="category-tag">${term.category.replace('-', ' ').toUpperCase()}</span>
+                <div class="description">${term.description}</div>
+                <div class="examples">
+                    <h3>Examples & Usage</h3>
+                    <code>${term.examples}</code>
+                </div>
+            `;
+
+            document.getElementById('detailPanel').classList.add('active');
+        }
+
+        function hideDetail() {
+            document.getElementById('detailPanel').classList.remove('active');
+        }
+
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            searchTerm = e.target.value;
+            renderTermList();
+        });
+
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentCategory = this.dataset.category;
+                renderTermList();
+            });
+        });
+
+        document.getElementById('closeBtn').addEventListener('click', hideDetail);
+
+        // Initialize
+        initThree();
+        animate();
+        renderTermList();
+    </script>
+</body>
+</html>
